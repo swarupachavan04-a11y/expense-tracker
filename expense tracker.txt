@@ -1,0 +1,113 @@
+import sqlite3
+import pandas as pd
+import matplotlib.pyplot as plt
+
+def connect():
+    return sqlite3.connect("expense.db")
+
+def create_table():
+    conn = connect()
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS transactions(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT,
+            type TEXT,
+            category TEXT,
+            amount REAL,
+            description TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def add_transaction():
+    conn = connect()
+    cursor = conn.cursor()
+
+    date = input("Enter date (YYYY-MM-DD): ")
+    ttype = input("Income or Expense: ")
+    category = input("Category: ")
+    amount = float(input("Amount: "))
+    description = input("Description: ")
+
+    cursor.execute("""
+        INSERT INTO transactions (date, type, category, amount, description)
+        VALUES (?, ?, ?, ?, ?)
+    """, (date, ttype, category, amount, description))
+
+    conn.commit()
+    conn.close()
+    print("Transaction Added Successfully!\n")
+
+def view_transactions():
+    conn = connect()
+    df = pd.read_sql_query("SELECT * FROM transactions", conn)
+    print("\nAll Transactions:")
+    print(df)
+    conn.close()
+
+def delete_transaction():
+    id = int(input("Enter Transaction ID to delete: "))
+    conn = connect()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM transactions WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+    print("Transaction Deleted!\n")
+
+def generate_report():
+    conn = connect()
+    df = pd.read_sql_query("SELECT * FROM transactions", conn)
+
+    if df.empty:
+        print("No transactions available.")
+        return
+
+    total_income = df[df['type']=="Income"]['amount'].sum()
+    total_expense = df[df['type']=="Expense"]['amount'].sum()
+    savings = total_income - total_expense
+
+    print("\n------ Financial Report ------")
+    print("Total Income:", total_income)
+    print("Total Expense:", total_expense)
+    print("Savings:", savings)
+
+    labels = ['Income', 'Expense']
+    values = [total_income, total_expense]
+
+    plt.pie(values, labels=labels, autopct='%1.1f%%')
+    plt.title("Income vs Expense")
+    plt.show()
+
+    conn.close()
+
+def main():
+    create_table()
+
+    while True:
+        print("====== Expense Tracker ======")
+        print("1. Add Transaction")
+        print("2. View Transactions")
+        print("3. Delete Transaction")
+        print("4. Generate Report")
+        print("5. Exit")
+
+        choice = input("Enter choice: ")
+
+        if choice == "1":
+            add_transaction()
+        elif choice == "2":
+            view_transactions()
+        elif choice == "3":
+            delete_transaction()
+        elif choice == "4":
+            generate_report()
+        elif choice == "5":
+            print("Exiting...")
+            break
+        else:
+            print("Invalid Choice!\n")
+
+if __name__ == "__main__":
+    main()
